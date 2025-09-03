@@ -12,7 +12,7 @@ blueprint:
     Sends a notification with a preview to your phone that is updated dynamically when the AI summary is available.
     Now includes optional Discord notifications with AI analysis results sent as text messages.
   domain: automation
-  source_url: https://github.com/valentinfrlch/ha-llmvision/blob/main/blueprints/event_summary_beta.yaml
+  source_url: https://github.com/typicalaimster/ha-llmvision/blob/discord-notification/blueprints/discord_notification.yaml
   input:
     run_conditions:
       name: Run Conditions
@@ -665,7 +665,7 @@ action:
                         - alias: "Send Discord notification snapshot"
                           service: "{{ discord_service_name }}"
                           data:
-                            message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nDashboard: {{ states('sensor.home_assistant_url') if states('sensor.home_assistant_url') != 'unknown' else 'http://homeassistant.local:8123' }}{{ tap_navigate }}"
+                            message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
                             target: "{{ discord_channels.split('\n') }}"
 
                   - conditions:
@@ -705,7 +705,7 @@ action:
                         - alias: "Send Discord notification live preview"
                           service: "{{ discord_service_name }}"
                           data:
-                            message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nDashboard: {{ states('sensor.home_assistant_url') if states('sensor.home_assistant_url') != 'unknown' else 'http://homeassistant.local:8123' }}{{ tap_navigate }}"
+                            message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
                             target: "{{ discord_channels.split('\n') }}"
 
   - alias: "Analyze event"
@@ -805,7 +805,7 @@ action:
                 - alias: "Send Discord notification analysis snapshot"
                   service: "{{ discord_service_name }}"
                   data:
-                    message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') if states('sensor.home_assistant_url') != 'unknown' else 'http://homeassistant.local:8123' }}{{ tap_navigate }}"
+                    message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
                     target: "{{ discord_channels.split('\n') }}"
 
             - conditions:
@@ -849,7 +849,7 @@ action:
                   - alias: "Send Discord notification analysis live preview"
                     service: "{{ discord_service_name }}"
                     data:
-                      message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') if states('sensor.home_assistant_url') != 'unknown' else 'http://homeassistant.local:8123' }}{{ tap_navigate }}"
+                      message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
                       target: "{{ discord_channels.split('\n') }}"
 
 
