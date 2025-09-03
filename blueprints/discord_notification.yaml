@@ -583,13 +583,13 @@ action:
               max_tokens: 3
             response_variable: importance
 
-          # Cancel automation if event not deemed important
-          - choose:
-              - conditions:
-                  - condition: template
-                    value_template: "{{ important and importance.response_text|lower == 'passive' }}"
-                sequence:
-                  - stop: "Event is not important"
+  # Cancel automation if event not deemed important
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ important and importance.response_text|lower == 'passive' }}"
+        sequence:
+          - stop: "Event is not important"
 
   # Only send notification if enabled, and if condtions and cooldown are met
   - if:
@@ -613,63 +613,61 @@ action:
                               - condition: template
                                 value_template: "{{ preview_mode=='Snapshot' }}"
                             sequence:
+                              # Save Camera Snapshot to file to send to Android devices for Dynamic Mode
+                              - service: camera.snapshot
+                                entity_id: !input camera_entities
+                                data:
+                                  filename: !input file_path
 
-                            # Save Camera Snapshot to file to send to Android devices for Dynamic Mode
-                            - service: camera.snapshot
-                              entity_id: !input camera_entities
-                              data:
-                                filename: !input file_path
-
-                            - alias: "Send instant notification snapshot to notify devices"
-                              repeat:
-                                for_each: "{{device_name_map}}"
-                                sequence:
-                                  - action: "notify.{{ repeat.item }}"
-                                    data:
-                                      title: "{{ label }} {{ notification_time }}"
-                                      message: "{{camera_message}} has detected activity."
+                              - alias: "Send instant notification snapshot to notify devices"
+                                repeat:
+                                  for_each: "{{device_name_map}}"
+                                  sequence:
+                                    - action: "notify.{{ repeat.item }}"
                                       data:
-                                        url: !input tap_navigate #iOS
-                                        clickAction: !input tap_navigate #Android
-                                        tag: "{{tag}}"
-                                        group: !input notification_channel
-                                        alert_once: true
-                                        # Priority options
-                                        ttl: 0
-                                        priority: high
-                                        # Android only
-                                        channel: !input notification_channel
-                                        color: !input notification_color
-                                        notification_icon: !input notification_icon
-                                        sticky: !input notification_sticky
-                                        image: "{{ snapshot_access_file_path }}"
-                                        # iOS only
-                                        attachment:
-                                          url: '{{ snapshot_access_file_path }}'
-                                          content_type: JPEG
-                                        push:
-                                          interruption-level: "{{importance.response_text|lower if importance is defined else 'active'}}"
-                                          sound:
-                                            name: !input notification_sound
-                                            volume: !input notification_volume
-                                            critical: '{{ notification_critical }}'
+                                        title: "{{ label }} {{ notification_time }}"
+                                        message: "{{camera_message}} has detected activity."
+                                        data:
+                                          url: !input tap_navigate #iOS
+                                          clickAction: !input tap_navigate #Android
+                                          tag: "{{tag}}"
+                                          group: !input notification_channel
+                                          alert_once: true
+                                          # Priority options
+                                          ttl: 0
+                                          priority: high
+                                          # Android only
+                                          channel: !input notification_channel
+                                          color: !input notification_color
+                                          notification_icon: !input notification_icon
+                                          sticky: !input notification_sticky
+                                          image: "{{ snapshot_access_file_path }}"
+                                          # iOS only
+                                          attachment:
+                                            url: '{{ snapshot_access_file_path }}'
+                                            content_type: JPEG
+                                          push:
+                                            interruption-level: "{{importance.response_text|lower if importance is defined else 'active'}}"
+                                            sound:
+                                              name: !input notification_sound
+                                              volume: !input notification_volume
+                                              critical: '{{ notification_critical }}'
 
-                            # Send Discord notification if enabled
-                            - if:
-                                - condition: template
-                                  value_template: "{{ discord_notify and discord_channels }}"
-                              then:
-                                - alias: "Send Discord notification snapshot"
-                                  service: "{{ discord_service_name }}"
-                                  data:
-                                    message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
-                                    target: "{{ discord_channels.split('\n') }}"
+                              # Send Discord notification if enabled
+                              - if:
+                                  - condition: template
+                                    value_template: "{{ discord_notify and discord_channels }}"
+                                then:
+                                  - alias: "Send Discord notification snapshot"
+                                    service: "{{ discord_service_name }}"
+                                    data:
+                                      message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
+                                      target: "{{ discord_channels.split('\n') }}"
 
                           - conditions:
                               - condition: template
                                 value_template: "{{ preview_mode=='Live Preview' }}"
                             sequence:
-
                               - alias: "Send Live Feed to notify devices"
                                 repeat:
                                   for_each: "{{device_name_map}}"
@@ -705,173 +703,171 @@ action:
                                       message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
                                       target: "{{ discord_channels.split('\n') }}"
 
-              - alias: "Analyze event"
-                action: llmvision.stream_analyzer
-                data:
-                  image_entity: "{{[camera_entity]}}"
-                  duration: !input duration
-                  provider: !input provider
-                  model: !input model
-                  message: !input message
-                  use_memory: !input use_memory
-                  remember: !input remember
-                  expose_images: "{{preview_mode == 'Snapshot' or remember}}"
-                  generate_title: !input remember
-                  include_filename: true
-                  max_frames: !input max_frames
-                  target_width: !input target_width
-                  max_tokens: !input max_tokens
-                response_variable: response
+  - alias: "Analyze event"
+    action: llmvision.stream_analyzer
+    data:
+      image_entity: "{{[camera_entity]}}"
+      duration: !input duration
+      provider: !input provider
+      model: !input model
+      message: !input message
+      use_memory: !input use_memory
+      remember: !input remember
+      expose_images: "{{preview_mode == 'Snapshot' or remember}}"
+      generate_title: !input remember
+      include_filename: true
+      max_frames: !input max_frames
+      target_width: !input target_width
+      max_tokens: !input max_tokens
+    response_variable: response
 
-              - alias: "Update label with title"
-                variables:
-                  label: "{{response.title}}"
+  - alias: "Update label with title"
+    variables:
+      label: "{{response.title}}"
 
-              # Send AI result to Discord
-              - if:
-                  - condition: template
-                    value_template: "{{ discord_notify and discord_channels }}"
-                then:
-                  - alias: "Send AI result to Discord"
-                    service: "{{ discord_service_name }}"
-                    data:
-                      message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}"
-                      target: "{{ discord_channels.split('\n') }}"
-                      data:
-                        images:
-                          - "{{ response.key_frame }}"
+  # Send AI result to Discord
+  - if:
+      - condition: template
+        value_template: "{{ discord_notify and discord_channels }}"
+    then:
+      - alias: "Send AI result to Discord"
+        service: "{{ discord_service_name }}"
+        data:
+          message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}"
+          target: "{{ discord_channels.split('\n') }}"
+          data:
+            images:
+              - "{{ response.key_frame }}"
 
-              # Only send notification if enabled, and if condtions and cooldown are met
-              - if:
-                  - condition: template
-                    value_template: !input notify
-                then:
-                  - if:
-                      - condition: !input condition_notify
-                    then:
+  # Only send notification if enabled, and if condtions and cooldown are met
+  - if:
+      - condition: template
+        value_template: !input notify
+    then:
+      - if:
+          - condition: !input condition_notify
+        then:
+          - if:
+              - condition: template
+                value_template: '{{ not this.attributes.last_triggered or (now() - this.attributes.last_triggered).seconds > delay_notification }}'
+            then:
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ analysis_mode=='Snapshot' }}"
+                    sequence:
+                      - alias: "(Snapshot) Update notification on notify devices"
+                        repeat:
+                          for_each: "{{device_name_map}}"
+                          sequence:
+                            - action: "notify.{{ repeat.item }}"
+                              data:
+                                title: "{{ label }} {{ notification_time }}"
+                                message: "{{response.response_text}}"
+                                data:
+                                  image: "{{response.key_frame.replace('/config/media', '/media') }}"
+                                  url: !input tap_navigate #iOS
+                                  clickAction: !input tap_navigate #Android
+                                  tag: "{{tag}}"
+                                  group: !input notification_channel
+                                  alert_once: true
+                                  # Priority options
+                                  ttl: 0
+                                  priority: high
+                                  # Android only
+                                  channel: !input notification_channel
+                                  color: !input notification_color
+                                  notification_icon: !input notification_icon
+                                  sticky: !input notification_sticky
+                                  # iOS only
+                                  push:
+                                    interruption-level: "{{'passive' if notification_delivery=='Dynamic' else 'active'}}"
+                                    sound:
+                                      name: !input notification_sound
+                                      volume: !input notification_volume
+                                      critical: '{{ notification_critical }}'
+                                  actions:
+                                  - action: 'URI'
+                                    title: 'See Snapshot'
+                                    uri: "{{response.key_frame.replace('/config/media', '/media') }}"
+
+                      # Send Discord notification if enabled (Analysis Snapshot)
                       - if:
                           - condition: template
-                            value_template: '{{ not this.attributes.last_triggered or (now() - this.attributes.last_triggered).seconds > delay_notification }}'
+                            value_template: "{{ discord_notify and discord_channels }}"
                         then:
-                          - choose:
-                              - conditions:
-                                  - condition: template
-                                    value_template: "{{ analysis_mode=='Snapshot' }}"
-                                sequence:
-                                  - alias: "(Snapshot) Update notification on notify devices"
-                                    repeat:
-                                      for_each: "{{device_name_map}}"
-                                      sequence:
-                                        - action: "notify.{{ repeat.item }}"
-                                          data:
-                                            title: "{{ label }} {{ notification_time }}"
-                                            message: "{{response.response_text}}"
-                                            data:
-                                              image: "{{response.key_frame.replace('/config/media', '/media') }}"
-                                              url: !input tap_navigate #iOS
-                                              clickAction: !input tap_navigate #Android
-                                              tag: "{{tag}}"
-                                              group: !input notification_channel
-                                              alert_once: true
-                                              # Priority options
-                                              ttl: 0
-                                              priority: high
-                                              # Android only
-                                              channel: !input notification_channel
-                                              color: !input notification_color
-                                              notification_icon: !input notification_icon
-                                              sticky: !input notification_sticky
-                                              # iOS only
-                                              push:
-                                                interruption-level: "{{'passive' if notification_delivery=='Dynamic' else 'active'}}"
-                                                sound:
-                                                  name: !input notification_sound
-                                                  volume: !input notification_volume
-                                                  critical: '{{ notification_critical }}'
-                                              actions:
-                                              - action: 'URI'
-                                                title: 'See Snapshot'
-                                                uri: "{{response.key_frame.replace('/config/media', '/media') }}"
+                          - alias: "Send Discord notification analysis snapshot"
+                            service: "{{ discord_service_name }}"
+                            data:
+                              message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
+                              target: "{{ discord_channels.split('\n') }}"
 
-                                  # Send Discord notification if enabled (Analysis Snapshot)
-                                  - if:
-                                      - condition: template
-                                        value_template: "{{ discord_notify and discord_channels }}"
-                                    then:
-                                      - alias: "Send Discord notification analysis snapshot"
-                                        service: "{{ discord_service_name }}"
-                                        data:
-                                          message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
-                                          target: "{{ discord_channels.split('\n') }}"
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ analysis_mode=='Live Preview' }}"
+                    sequence:
+                      - alias: "Send Live Feed to notify devices"
+                        repeat:
+                          for_each: "{{device_name_map}}"
+                          sequence:
+                            - action: "notify.{{ repeat.item }}"
+                              data:
+                                title: "{{ label }} {{ notification_time }}"
+                                message: "{{ response.response_text }}"
+                                data:
+                                  entity_id: "{{camera_entity}}"
+                                  url: !input tap_navigate
+                                  tag: "{{tag}}"
+                                  group: !input notification_channel
+                                  alert_once: true
+                                  push:
+                                    interruption-level: "{{importance.response_text|lower if importance is defined else 'active'}}"
+                                    sound:
+                                      name: !input notification_sound
+                                      volume: !input notification_volume
+                                      critical: '{{ notification_critical }}'
+                                  # Priority options
+                                  ttl: 0
+                                  priority: high
+                                  actions:
+                                  - action: 'URI'
+                                    title: 'See Snapshot'
+                                    uri: "{{response.key_frame.replace('/config/media', '/media') }}"
 
-                              - conditions:
-                                  - condition: template
-                                    value_template: "{{ analysis_mode=='Live Preview' }}"
-                                sequence:
+                      # Send Discord notification if enabled (Analysis Live Preview)
+                      - if:
+                          - condition: template
+                            value_template: "{{ discord_notify and discord_channels }}"
+                        then:
+                          - alias: "Send Discord notification analysis live preview"
+                            service: "{{ discord_service_name }}"
+                            data:
+                              message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
+                              target: "{{ discord_channels.split('\n') }}"
 
-                                  - alias: "Send Live Feed to notify devices"
-                                    repeat:
-                                      for_each: "{{device_name_map}}"
-                                      sequence:
-                                        - action: "notify.{{ repeat.item }}"
-                                          data:
-                                            title: "{{ label }} {{ notification_time }}"
-                                            message: "{{ response.response_text }}"
-                                            data:
-                                              entity_id: "{{camera_entity}}"
-                                              url: !input tap_navigate
-                                              tag: "{{tag}}"
-                                              group: !input notification_channel
-                                              alert_once: true
-                                              push:
-                                                interruption-level: "{{importance.response_text|lower if importance is defined else 'active'}}"
-                                                sound:
-                                                  name: !input notification_sound
-                                                  volume: !input notification_volume
-                                                  critical: '{{ notification_critical }}'
-                                              # Priority options
-                                              ttl: 0
-                                              priority: high
-                                              actions:
-                                              - action: 'URI'
-                                                title: 'See Snapshot'
-                                                uri: "{{response.key_frame.replace('/config/media', '/media') }}"
+  - if:
+      - condition: template
+        value_template: '{{ tts_notification }}'
+    then:
+      - if:
+          - condition: !input condition_notify_tts
+        then:
+          - alias: "TTS notification on notify devices"
+            repeat:
+              for_each: "{{device_name_map}}"
+              sequence:
+                - action: "notify.{{ repeat.item }}"
+                  data:
+                    message: TTS
+                    data:
+                      ttl: 0
+                      priority: high
+                      media_stream: !input tts_volume
+                      tts_text: "{{response.response_text}}"
 
-                                  # Send Discord notification if enabled (Analysis Live Preview)
-                                  - if:
-                                      - condition: template
-                                        value_template: "{{ discord_notify and discord_channels }}"
-                                    then:
-                                      - alias: "Send Discord notification analysis live preview"
-                                        service: "{{ discord_service_name }}"
-                                        data:
-                                          message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
-                                          target: "{{ discord_channels.split('\n') }}"
+  # Add Customized Actions
+  - choose: []
+    default: !input additional_actions
 
-
-                          - if:
-                              - condition: template
-                                value_template: '{{ tts_notification }}'
-                            then:
-                              - if:
-                                  - condition: !input condition_notify_tts
-                                then:
-                                  - alias: "TTS notification on notify devices"
-                                    repeat:
-                                      for_each: "{{device_name_map}}"
-                                      sequence:
-                                        - action: "notify.{{ repeat.item }}"
-                                          data:
-                                            message: TTS
-                                            data:
-                                              ttl: 0
-                                              priority: high
-                                              media_stream: !input tts_volume
-                                              tts_text: "{{response.response_text}}"
-
-              # Add Customized Actions
-              - choose: []
-                default: !input additional_actions
-
-              # - delay: '00:{{cooldown|int}}:00'
-              - delay: !input cooldown
+  # - delay: '00:{{cooldown|int}}:00'
+  - delay: !input cooldown
