@@ -12,7 +12,7 @@ blueprint:
     Sends a notification with a preview to your phone that is updated dynamically when the AI summary is available.
     Now includes optional Discord notifications with AI analysis results sent as text messages.
   domain: automation
-  source_url: https://github.com/typicalaimster/ha-llmvision/blob/discord-notification/blueprints/discord_notification.yaml
+  source_url: https://github.com/valentinfrlch/ha-llmvision/blob/main/blueprints/event_summary_beta.yaml
   input:
     run_conditions:
       name: Run Conditions
@@ -456,12 +456,6 @@ blueprint:
           default: "notify.habot"
           selector:
             text: {}
-        home_assistant_url:
-          name: Home Assistant URL
-          description: Your Home Assistant base URL (e.g., https://your-ha-instance.duckdns.org:8123). This will be used in Discord messages for the dashboard link.
-          default: "http://homeassistant.local:8123/llm-vision/0"
-          selector:
-            text: {}
     # Experimental Section
     experimental_section:
       name: Experimental Settings
@@ -554,15 +548,6 @@ variables:
   discord_message_prefix: !input discord_message_prefix
   discord_webhook_url: !input discord_webhook_url
   discord_service_name: !input discord_service_name
-  home_assistant_url: !input home_assistant_url
-  dashboard_url: >
-    {% if home_assistant_url %}
-      {{ home_assistant_url }}{{ tap_navigate }}
-    {% elif states('sensor.home_assistant_url') != 'unknown' %}
-      {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}
-    {% else %}
-      Dashboard URL not configured
-    {% endif %}
 
 
 max_exceeded: silent
@@ -680,7 +665,7 @@ action:
                         - alias: "Send Discord notification snapshot"
                           service: "{{ discord_service_name }}"
                           data:
-                            message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nDashboard: {{ dashboard_url }}"
+                            message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
                             target: "{{ discord_channels.split('\n') }}"
 
                   - conditions:
@@ -720,7 +705,7 @@ action:
                         - alias: "Send Discord notification live preview"
                           service: "{{ discord_service_name }}"
                           data:
-                            message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nDashboard: {{ dashboard_url }}"
+                            message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
                             target: "{{ discord_channels.split('\n') }}"
 
   - alias: "Analyze event"
@@ -820,7 +805,7 @@ action:
                 - alias: "Send Discord notification analysis snapshot"
                   service: "{{ discord_service_name }}"
                   data:
-                    message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ dashboard_url }}"
+                    message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
                     target: "{{ discord_channels.split('\n') }}"
 
             - conditions:
@@ -864,7 +849,7 @@ action:
                   - alias: "Send Discord notification analysis live preview"
                     service: "{{ discord_service_name }}"
                     data:
-                      message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ dashboard_url }}"
+                      message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
                       target: "{{ discord_channels.split('\n') }}"
 
 
