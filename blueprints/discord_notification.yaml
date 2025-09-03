@@ -559,7 +559,7 @@ variables:
     {% if home_assistant_url %}
       {{ home_assistant_url }}{{ tap_navigate }}
     {% elif states('sensor.home_assistant_url') != 'unknown' %}
-      {{ dashboard_url }}
+      {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}
     {% else %}
       Dashboard URL not configured
     {% endif %}
