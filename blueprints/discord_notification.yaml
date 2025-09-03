@@ -732,11 +732,11 @@ action:
 
   # Send AI result to Discord
   - alias: "Send AI result to Discord"
-    service: notify.habot
+    service: "{{ discord_service_name }}"
     data:
       message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
       target:
-        - "1179110088401752214"
+        - "1412599363343089684"
       data:
         images:
           - "{{ response.key_frame }}"
