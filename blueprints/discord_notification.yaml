@@ -419,7 +419,7 @@ blueprint:
           default: ['1179110088401752214']
           selector:
             text:
-              multiline: true
+              multiline: false
         discord_embed:
           name: Use Discord Embeds
           description: Send notifications as rich Discord embeds instead of plain text.
@@ -666,7 +666,7 @@ action:
                           service: "{{ discord_service_name }}"
                           data:
                             message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
-                            target: "{{ discord_channels.split('\n') }}"
+                            target: [ "{{ discord_channels }}" ]
 
                   - conditions:
                       - condition: template
@@ -706,7 +706,7 @@ action:
                           service: "{{ discord_service_name }}"
                           data:
                             message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
-                            target: "{{ discord_channels.split('\n') }}"
+                            target: [ "{{ discord_channels }}" ]
 
   - alias: "Analyze event"
     action: llmvision.stream_analyzer
@@ -735,8 +735,7 @@ action:
     service: "{{ discord_service_name }}"
     data:
       message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
-      target:
-        - "1412599363343089684"
+      target: [ "{{ discord_channels }}" ]
       data:
         images:
           - "{{ response.key_frame }}"
@@ -803,8 +802,7 @@ action:
                   service: "{{ discord_service_name }}"
                   data:
                     message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
-                    target: "{{ discord_channels.split('\n') }}"
-
+                    target: [ "{{ discord_channels }}" ]
             - conditions:
                 - condition: template
                   value_template: "{{ analysis_mode=='Live Preview' }}"
@@ -847,8 +845,7 @@ action:
                     service: "{{ discord_service_name }}"
                     data:
                       message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
-                      target: "{{ discord_channels.split('\n') }}"
-
+                      target: [ "{{ discord_channels }}" ]
 
       - if:
         - condition: template
