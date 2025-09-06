@@ -444,12 +444,6 @@ blueprint:
           default: "🚨 "
           selector:
             text: {}
-        discord_webhook_url:
-          name: Discord Webhook URL (Alternative)
-          description: Alternative to bot token - use webhook URL instead. Leave empty if using bot token.
-          default: ""
-          selector:
-            text: {}
         discord_service_name:
           name: Discord Service Name
           description: The Discord notification service name (default notify.habot). Change if you have multiple Discord integrations.
@@ -546,7 +540,6 @@ variables:
   discord_embed_color: !input discord_embed_color
   discord_include_image: !input discord_include_image
   discord_message_prefix: !input discord_message_prefix
-  discord_webhook_url: !input discord_webhook_url
   discord_service_name: !input discord_service_name
 
 
