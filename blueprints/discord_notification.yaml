@@ -3,7 +3,7 @@
 # Take snapshot of triggered camera entity if using multiple cameras (? help needed)
 # Snooze blueprint or notifications
 blueprint:
-  name: Discord Integrated Event Summary (v1.5.3)
+  name: Discord Integrated Event Summary (v1.5.6)
   author: valentinfrlch
   homeassistant:
     min_version: 2024.10.0
@@ -93,6 +93,17 @@ blueprint:
           default: false
           selector:
             boolean:
+        unifi_camera_name:
+          name: UniFi Camera Name (optional)
+          description: >
+            Base name used to look up UniFi Protect sensor entities for LPR and smart detection context.
+            Set this to the camera's display name slug in Home Assistant (e.g. 'garage_180' for
+            binary_sensor.garage_180_person_detected / sensor.garage_180_license_plate).
+            Leave blank to skip UniFi context injection.
+          default: ""
+          selector:
+            text:
+              multiline: false
         message:
           name: Prompt
           description: Model prompt for the video_analyzer action
@@ -450,6 +461,27 @@ blueprint:
           default: "notify.habot"
           selector:
             text: {}
+    # UniFi Protect Section
+    unifi_section:
+      name: UniFi Protect Settings
+      description: Optional settings to link Discord notifications directly to UniFi Protect event clips.
+      icon: mdi:cctv
+      collapsed: true
+      input:
+        unifi_protect_url:
+          name: UniFi Protect Base URL
+          description: Base URL of your UniFi Protect instance (e.g. https://10.0.0.1). Leave blank to use HA dashboard link instead.
+          default: ""
+          selector:
+            text:
+              multiline: false
+        unifi_device_id:
+          name: UniFi Device ID
+          description: HA device ID for this camera. Used to match unifiprotect_smart_detect events to this automation. Run device_id('binary_sensor.your_camera_person_detected') in Developer Tools > Template to find it.
+          default: ""
+          selector:
+            text:
+              multiline: false
     # Experimental Section
     experimental_section:
       name: Experimental Settings
@@ -541,6 +573,21 @@ variables:
   discord_include_image: !input discord_include_image
   discord_message_prefix: !input discord_message_prefix
   discord_service_name: !input discord_service_name
+  user_message: !input message
+  unifi_camera_name: !input unifi_camera_name
+  unifi_protect_url: !input unifi_protect_url
+  unifi_device_id: !input unifi_device_id
+  protect_event_url: >
+    {% if trigger.id == 'unifi_event_trigger' and unifi_protect_url %}
+      {{ unifi_protect_url }}/protect/timelapse/{{ trigger.event.data.id }}?start={{ (as_timestamp(now()) * 1000) | int }}
+    {% elif unifi_protect_url %}
+      {{ unifi_protect_url }}/protect/detections/find-anything
+    {% else %}
+      {{ ha_url }}{{ tap_navigate }}
+    {% endif %}
+  ha_url: >
+    {% set url = states('sensor.home_assistant_url') %}
+    {{ url if url not in ('unknown', 'unavailable', '') else 'http://homeassistant.local:8123' }}
 
 
 max_exceeded: silent
@@ -555,6 +602,11 @@ triggers:
     entity_id: !input motion_sensors
     to: 'on'
     id: 'motion_sensor_trigger'
+  - trigger: event
+    event_type: unifiprotect_smart_detect
+    event_data:
+      device_id: !input unifi_device_id
+    id: 'unifi_event_trigger'
 
 condition:
   - condition: and
@@ -658,7 +710,7 @@ action:
                         - alias: "Send Discord notification snapshot"
                           service: "{{ discord_service_name }}"
                           data:
-                            message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
+                            message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nEvent: {{ protect_event_url }}"
                             target: [ "{{ discord_channels }}" ]
 
                   - conditions:
@@ -698,8 +750,30 @@ action:
                         - alias: "Send Discord notification live preview"
                           service: "{{ discord_service_name }}"
                           data:
-                            message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
+                            message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{camera_message}} has detected activity.\n\nEvent: {{ protect_event_url }}"
                             target: [ "{{ discord_channels }}" ]
+
+  - alias: "Build analysis context"
+    variables:
+      analysis_message: >
+        {% if unifi_camera_name %}
+          {% set lpr = 'sensor.' + unifi_camera_name + '_license_plate' %}
+          {% set person = 'binary_sensor.' + unifi_camera_name + '_person_detected' %}
+          {% set vehicle = 'binary_sensor.' + unifi_camera_name + '_vehicle_detected' %}
+          {% set plate = states(lpr) if states(lpr) not in ('unknown', 'unavailable', 'none', '') else '' %}
+          {% set detected = [] %}
+          {% if is_state(person, 'on') %}{% set detected = detected + ['person'] %}{% endif %}
+          {% if is_state(vehicle, 'on') %}{% set detected = detected + ['vehicle'] %}{% endif %}
+          {% if detected or plate %}
+            UniFi Protect confirmed: {{ detected | join(', ') }}{% if plate %} | Plate: {{ plate }}{% endif %}
+
+            {{ user_message }}
+          {% else %}
+            {{ user_message }}
+          {% endif %}
+        {% else %}
+          {{ user_message }}
+        {% endif %}
 
   - alias: "Analyze event"
     action: llmvision.stream_analyzer
@@ -708,7 +782,7 @@ action:
       duration: !input duration
       provider: !input provider
       model: !input model
-      message: !input message
+      message: "{{ analysis_message }}"
       use_memory: !input use_memory
       remember: !input remember
       expose_images: "{{preview_mode == 'Snapshot' or remember}}"
@@ -727,7 +801,7 @@ action:
   - alias: "Send AI result to Discord"
     service: "{{ discord_service_name }}"
     data:
-      message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
+      message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nEvent: {{ protect_event_url }}"
       target: [ "{{ discord_channels }}" ]
       data:
         images:
@@ -794,7 +868,7 @@ action:
                 - alias: "Send Discord notification analysis snapshot"
                   service: "{{ discord_service_name }}"
                   data:
-                    message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
+                    message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nEvent: {{ protect_event_url }}"
                     target: [ "{{ discord_channels }}" ]
             - conditions:
                 - condition: template
@@ -837,7 +911,7 @@ action:
                   - alias: "Send Discord notification analysis live preview"
                     service: "{{ discord_service_name }}"
                     data:
-                      message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nDashboard: {{ states('sensor.home_assistant_url') }}{{ tap_navigate }}"
+                      message: "{{ discord_message_prefix }}{{ label }} {{ notification_time }}\n\n{{ response.response_text }}\n\nEvent: {{ protect_event_url }}"
                       target: [ "{{ discord_channels }}" ]
 
       - if:
