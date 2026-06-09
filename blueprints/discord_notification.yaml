@@ -3,7 +3,7 @@
 # Take snapshot of triggered camera entity if using multiple cameras (? help needed)
 # Snooze blueprint or notifications
 blueprint:
-  name: Discord Integrated Event Summary (v1.5.6)
+  name: Discord Integrated Event Summary (v1.5.7)
   author: valentinfrlch
   homeassistant:
     min_version: 2024.10.0
@@ -475,13 +475,6 @@ blueprint:
           selector:
             text:
               multiline: false
-        unifi_device_id:
-          name: UniFi Device ID
-          description: HA device ID for this camera. Used to match unifiprotect_smart_detect events to this automation. Run device_id('binary_sensor.your_camera_person_detected') in Developer Tools > Template to find it.
-          default: ""
-          selector:
-            text:
-              multiline: false
     # Experimental Section
     experimental_section:
       name: Experimental Settings
@@ -576,7 +569,6 @@ variables:
   user_message: !input message
   unifi_camera_name: !input unifi_camera_name
   unifi_protect_url: !input unifi_protect_url
-  unifi_device_id: !input unifi_device_id
   protect_event_url: >
     {% if trigger.id == 'unifi_event_trigger' and unifi_protect_url %}
       {{ unifi_protect_url }}/protect/timelapse/{{ trigger.event.data.id }}?start={{ (as_timestamp(now()) * 1000) | int }}
@@ -604,8 +596,6 @@ triggers:
     id: 'motion_sensor_trigger'
   - trigger: event
     event_type: unifiprotect_smart_detect
-    event_data:
-      device_id: !input unifi_device_id
     id: 'unifi_event_trigger'
 
 condition:
@@ -614,6 +604,11 @@ condition:
   
 
 action:
+  - condition: template
+    value_template: >
+      {{ trigger.id != 'unifi_event_trigger' or
+         trigger.event.data.device_id == device_id(camera_entities_list[0]) }}
+
   - choose:
       - conditions:
           - condition: template
