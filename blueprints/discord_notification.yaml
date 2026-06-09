@@ -3,7 +3,7 @@
 # Take snapshot of triggered camera entity if using multiple cameras (? help needed)
 # Snooze blueprint or notifications
 blueprint:
-  name: Discord Integrated Event Summary (v1.5.7)
+  name: Discord Integrated Event Summary (v1.5.8)
   author: valentinfrlch
   homeassistant:
     min_version: 2024.10.0
@@ -570,10 +570,8 @@ variables:
   unifi_camera_name: !input unifi_camera_name
   unifi_protect_url: !input unifi_protect_url
   protect_event_url: >
-    {% if trigger.id == 'unifi_event_trigger' and unifi_protect_url %}
-      {{ unifi_protect_url }}/protect/timelapse/{{ trigger.event.data.id }}?start={{ (as_timestamp(now()) * 1000) | int }}
-    {% elif unifi_protect_url %}
-      {{ unifi_protect_url }}/protect/detections/find-anything
+    {% if unifi_protect_url %}
+      {{ unifi_protect_url }}/protect/timelapse?start={{ (as_timestamp(now()) * 1000) | int }}
     {% else %}
       {{ ha_url }}{{ tap_navigate }}
     {% endif %}
@@ -594,9 +592,6 @@ triggers:
     entity_id: !input motion_sensors
     to: 'on'
     id: 'motion_sensor_trigger'
-  - trigger: event
-    event_type: unifiprotect_smart_detect
-    id: 'unifi_event_trigger'
 
 condition:
   - condition: and
@@ -604,11 +599,6 @@ condition:
   
 
 action:
-  - condition: template
-    value_template: >
-      {{ trigger.id != 'unifi_event_trigger' or
-         trigger.event.data.device_id == device_id(camera_entities_list[0]) }}
-
   - choose:
       - conditions:
           - condition: template
